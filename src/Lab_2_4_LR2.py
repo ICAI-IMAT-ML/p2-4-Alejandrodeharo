@@ -64,11 +64,13 @@ class LinearRegressor:
         Returns:
             None: Modifies the model's coefficients and intercept in-place.
         """
-        # Replace this code with the code you did in the previous laboratory session
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
 
-        # Store the intercept and the coefficients of the model
-        self.intercept = None
-        self.coefficients = None
+        betas = np.linalg.solve(X.T @ X, X.T @ y)
+
+        self.intercept = betas[0]
+        self.coefficients = betas[1:]
 
     def fit_gradient_descent(self, X, y, learning_rate=0.01, iterations=1000):
         """
@@ -93,18 +95,19 @@ class LinearRegressor:
 
         # Implement gradient descent (TODO)
         for epoch in range(iterations):
-            predictions = None
+            predictions = X @ np.hstack([self.intercept, self.coefficients])
             error = predictions - y
 
             # TODO: Write the gradient values and the updates for the paramenters
-            gradient = None
-            self.intercept -= None
-            self.coefficients -= None
+            gradient = (learning_rate/m)* (error @ X)
+            self.intercept -= gradient[0]
+            self.coefficients -= gradient[1:]
 
             # TODO: Calculate and print the loss every 10 epochs
             if epoch % 1000 == 0:
-                mse = None
+                mse = 1/2 * np.sum(error**2)
                 print(f"Epoch {epoch}: MSE = {mse}")
+
 
     def predict(self, X):
         """
@@ -121,12 +124,20 @@ class LinearRegressor:
             ValueError: If the model is not yet fitted.
         """
 
-        # Paste your code from last week
+        if self.coefficients is None or self.intercept is None:
+            raise ValueError("Model is not yet fitted")
+
+        X = np.atleast_1d(X)  # Asegura que al menos sea 1D (por si entra un escalar)
+
+        if np.ndim(X) == 1:
+            predictions = self.intercept + self.coefficients * X
+        else:
+            predictions = self.intercept + X.dot(self.coefficients)
 
         if self.coefficients is None or self.intercept is None:
             raise ValueError("Model is not yet fitted")
 
-        return None
+        return predictions
 
 
 def evaluate_regression(y_true, y_pred):
@@ -141,17 +152,13 @@ def evaluate_regression(y_true, y_pred):
         dict: A dictionary containing the R^2, RMSE, and MAE values.
     """
 
-    # R^2 Score
-    # TODO
-    r_squared = None
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+    r_squared = 1 - (ss_res / ss_tot)
 
-    # Root Mean Squared Error
-    # TODO
-    rmse = None
+    rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
 
-    # Mean Absolute Error
-    # TODO
-    mae = None
+    mae = np.mean(np.abs(y_true - y_pred))
 
     return {"R2": r_squared, "RMSE": rmse, "MAE": mae}
 
@@ -172,19 +179,23 @@ def one_hot_encode(X, categorical_indices, drop_first=False):
     X_transformed = X.copy()
     for index in sorted(categorical_indices, reverse=True):
         # TODO: Extract the categorical column
-        categorical_column = None
+        categorical_column = X_transformed[:, index]
 
         # TODO: Find the unique categories (works with strings)
-        unique_values = None
+        unique_values = np.unique(categorical_column)
 
         # TODO: Create a one-hot encoded matrix (np.array) for the current categorical column
-        one_hot = None
+        one_hot = np.zeros((X_transformed.shape[0], len(unique_values)))
+        for i, val in enumerate(categorical_column):
+            col_idx = np.where(unique_values == val)[0][0]
+            one_hot[i, col_idx] = 1
 
         # Optionally drop the first level of one-hot encoding
         if drop_first:
             one_hot = one_hot[:, 1:]
 
         # TODO: Delete the original categorical column from X_transformed and insert new one-hot encoded columns
-        X_transformed = None
+        X_transformed = np.delete(X_transformed, index, axis=1)
+        X_transformed = np.hstack([X_transformed[:, :index], one_hot, X_transformed[:, index:]])
 
     return X_transformed
